@@ -31,9 +31,11 @@ typedef struct Activation {
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
     }
 
-    void setup() const {
+    void setup()  {
         pinMode(config.pin, OUTPUT);
         digitalWrite(config.pin, config.inverted ? HIGH : LOW);
+        on_timer.expire();
+        off_timer.expire();
     }
 
     void dump() const {
@@ -108,6 +110,8 @@ typedef struct Servo {
     void setup() {
         pinMode(config.pin, OUTPUT);
         update_state(config.angleWhenOff);
+        on_timer.expire();
+        off_timer.expire();
     }
 
     void dump() const {

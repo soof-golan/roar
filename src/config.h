@@ -16,7 +16,7 @@ typedef struct Config {
                             .pin = 4,
                             .debounce = 50,
                             .pull_up = true,
-                            .inverted = false,
+                            .inverted = true,
                             .name = "Pressure"
                     }
             )

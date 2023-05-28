@@ -17,11 +17,10 @@ void setup() {
     Serial.println("[ROAR] Configuring...");
     config.inputs.setup();
     config.outputs.setup();
-    config.inputs.pressure.subscribe_high(on_pressure_sensor_trigger);
-
-    Serial.println("[ROAR] Configured");
     config.inputs.dump();
     config.outputs.dump();
+    config.inputs.pressure.subscribe_high(on_pressure_sensor_trigger);
+    Serial.println("[ROAR] Configured");
 
     Serial.println("[ROAR] Started");
 }
