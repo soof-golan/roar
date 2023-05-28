@@ -34,8 +34,8 @@ typedef struct Config {
             .solenoid=Activation(
                     Activation::Config{
                             .pin = 12,
-                            .delay = 1000,
-                            .duration = 1000,
+                            .delay = 50,
+                            .duration = 700,
                             .inverted = false,
                             .name = "Solenoid"
                     }
@@ -44,10 +44,10 @@ typedef struct Config {
             .lighter=Servo(
                     Servo::Config{
                             .pin = 13,
-                            .delay = 1000,
+                            .delay = 50,
                             .duration = 1000,
-                            .angleWhenOn = 0,
-                            .angleWhenOff = 180,
+                            .angleWhenOn = 135,
+                            .angleWhenOff = 15,
                             .name = "Lighter"
                     }),
     };
