@@ -13,7 +13,7 @@ typedef struct Config {
     Inputs inputs = {
             .pressure=Sensor(
                     Sensor::Config{
-                            .pin = 4,
+                            .pin = 6,
                             .debounce = 50,
                             .pull_up = true,
                             .inverted = true,
@@ -24,7 +24,7 @@ typedef struct Config {
     Outputs outputs = {
             .dispenser = Activation(
                     Activation::Config{
-                            .pin = 11,
+                            .pin = 5,
                             .delay = 1000,
                             .duration = 1000,
                             .inverted = false,
@@ -33,7 +33,7 @@ typedef struct Config {
             ),
             .solenoid=Activation(
                     Activation::Config{
-                            .pin = 12,
+                            .pin = 4,
                             .delay = 50,
                             .duration = 700,
                             .inverted = false,
@@ -43,7 +43,7 @@ typedef struct Config {
 
             .lighter=Servo(
                     Servo::Config{
-                            .pin = 13,
+                            .pin = 3,
                             .delay = 50,
                             .duration = 1000,
                             .angleWhenOn = 135,
