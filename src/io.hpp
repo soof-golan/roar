@@ -25,15 +25,16 @@ typedef struct Activation {
 
     AsyncDelay on_timer;
     AsyncDelay off_timer;
+    int state;
 
-    explicit Activation(const Config &config) : config(config) {
+    explicit Activation(const Config &config) : config(config), state(config.inverted ? HIGH : LOW) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
     }
 
-    void setup()  {
+    void setup() {
         pinMode(config.pin, OUTPUT);
-        digitalWrite(config.pin, config.inverted ? HIGH : LOW);
+        digitalWrite(config.pin, state);
         on_timer.expire();
         off_timer.expire();
     }
@@ -54,15 +55,23 @@ typedef struct Activation {
         }
     }
 
-    void tick() const {
+    void tick() {
         if (off_timer.isExpired()) {
-//            Serial.println("[Output." + String(config.name) + "] Off");
-            digitalWrite(config.pin, config.inverted ? HIGH : LOW);
+            const auto new_state = config.inverted ? LOW : HIGH;
+            if (state != new_state) {
+                Serial.println("[Output." + String(config.name) + "] Off");
+            }
+            state = new_state;
         } else if (on_timer.isExpired()) {
-            Serial.println("[Output." + String(config.name) + "] On");
-            digitalWrite(config.pin, config.inverted ? LOW : HIGH);
+            const auto new_state = config.inverted ? HIGH : LOW;
+            if (state != new_state) {
+                Serial.println("[Output." + String(config.name) + "] On");
+            }
+            state = new_state;
         }
+        digitalWrite(config.pin, state);
     }
+
 
 } Activation;
 
@@ -104,12 +113,13 @@ typedef struct Servo {
     void update_state(Degrees angle) {
         state.angle = angle;
         state.pwm = angele_to_pwm(angle);
-        analogWrite(config.pin, state.pwm);
     }
 
     void setup() {
         pinMode(config.pin, OUTPUT);
+        state = {config.angleWhenOff, angele_to_pwm(config.angleWhenOff)};
         update_state(config.angleWhenOff);
+        drive_outputs();
         on_timer.expire();
         off_timer.expire();
     }
@@ -133,12 +143,31 @@ typedef struct Servo {
 
     void tick() {
         if (off_timer.isExpired()) {
-            update_state(config.angleWhenOff);
+            const auto new_state = State{
+                .angle = config.angleWhenOff,
+                .pwm = angele_to_pwm(config.angleWhenOff),
+            };
+            if (state.angle != new_state.angle) {
+                Serial.println("[Servo." + String(config.name) + "] Off");
+            }
+            state = new_state;
         } else if (on_timer.isExpired()) {
-            update_state(config.angleWhenOn);
-            Serial.println("[Servo." + String(config.name) + "] On");
+            const auto new_state = State{
+                .angle = config.angleWhenOn,
+                .pwm = angele_to_pwm(config.angleWhenOn),
+            };
+            if (state.angle != new_state.angle) {
+                Serial.println("[Servo." + String(config.name) + "] On");
+            }
+            state = new_state;
         }
+        drive_outputs();
     }
+
+    void drive_outputs() const {
+        analogWrite(config.pin, state.pwm);
+    }
+
 } Servo;
 
 typedef struct Sensor {
