@@ -8,8 +8,9 @@
 #include <Arduino.h>
 #include <EasyButton.h>
 #include <AsyncDelay.h>
+#include <Servo.h>
 
-typedef long int Degrees;
+typedef int Degrees;
 typedef unsigned long Milliseconds;
 typedef uint8_t Pin;
 
@@ -77,7 +78,7 @@ typedef struct Activation {
 
 } Activation;
 
-typedef struct Servo {
+typedef struct ServoActivation {
     typedef struct Config {
         Pin pin;
         Milliseconds delay;
@@ -95,11 +96,12 @@ typedef struct Servo {
 
     const Config config;
     State state;
+    Servo servo;
 
     AsyncDelay on_timer;
     AsyncDelay off_timer;
 
-    explicit Servo(const Config &config) : config(config), state({config.angleWhenOff, angele_to_pwm(config.angleWhenOff)}) {
+    explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff, angele_to_pwm(config.angleWhenOff)}) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
     }
@@ -118,7 +120,7 @@ typedef struct Servo {
     }
 
     void setup() {
-        pinMode(config.pin, OUTPUT);
+        servo.attach(config.pin);
         state = {config.angleWhenOff, angele_to_pwm(config.angleWhenOff)};
         update_state(config.angleWhenOff);
         drive_outputs();
@@ -137,7 +139,7 @@ typedef struct Servo {
 
     void trigger(Milliseconds now) {
         if (on_timer.isExpired()) {
-            info(now, "[Servo." + String(config.name) + "] Triggered");
+            info(now, "[ServoActivation." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
             off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
         }
@@ -150,7 +152,8 @@ typedef struct Servo {
                     .pwm = angele_to_pwm(config.angleWhenOff),
             };
             if (state.angle != new_state.angle) {
-                info(now, "[Servo." + String(config.name) + "] Off | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
+                info(now, "[ServoActivation." + String(config.name) + "] Off | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
+                drive_outputs();
             }
             state = new_state;
         } else if (on_timer.isExpired()) {
@@ -159,18 +162,18 @@ typedef struct Servo {
                     .pwm = angele_to_pwm(config.angleWhenOn),
             };
             if (state.angle != new_state.angle) {
-                info(now, "[Servo." + String(config.name) + "] On | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
+                info(now, "[ServoActivation." + String(config.name) + "] On | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
+                drive_outputs();
             }
             state = new_state;
         }
-        drive_outputs();
     }
 
-    void drive_outputs() const {
-        analogWrite(config.pin, state.pwm);
+    void drive_outputs() {
+        servo.write(state.angle);
     }
 
-} Servo;
+} ServoActivation;
 
 typedef struct Sensor {
     typedef struct Config {
@@ -243,7 +246,7 @@ typedef struct Inputs {
 typedef struct Outputs {
     Activation dispenser;
     Activation solenoid;
-    Servo lighter;
+    ServoActivation lighter;
 
     void setup() {
         dispenser.setup();

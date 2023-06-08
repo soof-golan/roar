@@ -41,13 +41,13 @@ typedef struct Config {
                     }
             ),
 
-            .lighter=Servo(
-                    Servo::Config{
+            .lighter=ServoActivation(
+                    ServoActivation::Config{
                             .pin = 3,
                             .delay = 50,
                             .duration = 1000,
                             .angleWhenOn = 135,
-                            .angleWhenOff = 15,
+                            .angleWhenOff = 0,
                             .name = "Lighter"
                     }),
     };
