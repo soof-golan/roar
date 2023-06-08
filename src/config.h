@@ -13,7 +13,7 @@ typedef struct Config {
     Inputs inputs = {
             .pressure=Sensor(
                     Sensor::Config{
-                            .pin = 6,
+                            .pin = 2,
                             .debounce = 50,
                             .pull_up = true,
                             .inverted = true,
