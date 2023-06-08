@@ -13,6 +13,8 @@ typedef long int Degrees;
 typedef unsigned long Milliseconds;
 typedef uint8_t Pin;
 
+#define info(now, message) (Serial.println("[clk:" + String(now) + "] | " + String(message)))
+
 typedef struct Activation {
     typedef struct Config {
         Pin pin;
@@ -39,33 +41,33 @@ typedef struct Activation {
         off_timer.expire();
     }
 
-    void dump() const {
-        Serial.println("[Output." + String(config.name) + "]");
-        Serial.println("  - Pin: " + String(config.pin));
-        Serial.println("  - Inverted: " + String(config.inverted));
-        Serial.println("  - Delay: " + String(config.delay) + "ms");
-        Serial.println("  - Duration: " + String(config.duration) + "ms");
+    void dump(const Milliseconds now) const {
+        info(now, "[Output." + String(config.name) + "]");
+        info(now, "  - Pin: " + String(config.pin));
+        info(now, "  - Inverted: " + String(config.inverted));
+        info(now, "  - Delay: " + String(config.delay) + "ms");
+        info(now, "  - Duration: " + String(config.duration) + "ms");
     }
 
-    void trigger() {
+    void trigger(Milliseconds now) {
         if (on_timer.isExpired()) {
-            Serial.println("[Output." + String(config.name) + "] Triggered");
+            info(now, "[Output." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
             off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
         }
     }
 
-    void tick() {
+    void tick(const Milliseconds now) {
         if (off_timer.isExpired()) {
             const auto new_state = config.inverted ? LOW : HIGH;
             if (state != new_state) {
-                Serial.println("[Output." + String(config.name) + "] Off");
+                info(now, "[Output." + String(config.name) + "] Off | " + (config.inverted ? "LOW -> HIGH" : "HIGH -> LOW"));
             }
             state = new_state;
         } else if (on_timer.isExpired()) {
             const auto new_state = config.inverted ? HIGH : LOW;
             if (state != new_state) {
-                Serial.println("[Output." + String(config.name) + "] On");
+                info(now, "[Output." + String(config.name) + "] On | " + (config.inverted ? "HIGH -> LOW" : "LOW -> HIGH"));
             }
             state = new_state;
         }
@@ -124,40 +126,40 @@ typedef struct Servo {
         off_timer.expire();
     }
 
-    void dump() const {
-        Serial.println("[Servo." + String(config.name) + "]");
-        Serial.println("  - Pin: " + String(config.pin));
-        Serial.println("  - Delay: " + String(config.delay) + "ms");
-        Serial.println("  - Duration: " + String(config.duration) + "ms");
-        Serial.println("  - Angle When On: " + String(config.angleWhenOn) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOn)) + ")");
-        Serial.println("  - Angle When Off: " + String(config.angleWhenOff) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOff)) + ")");
+    void dump(const Milliseconds now) const {
+        info(now, "[Servo." + String(config.name) + "]");
+        info(now, "  - Pin: " + String(config.pin));
+        info(now, "  - Delay: " + String(config.delay) + "ms");
+        info(now, "  - Duration: " + String(config.duration) + "ms");
+        info(now, "  - Angle When On: " + String(config.angleWhenOn) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOn)) + ")");
+        info(now, "  - Angle When Off: " + String(config.angleWhenOff) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOff)) + ")");
     }
 
-    void trigger() {
+    void trigger(Milliseconds now) {
         if (on_timer.isExpired()) {
-            Serial.println("[Servo." + String(config.name) + "] Triggered");
+            info(now, "[Servo." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
             off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
         }
     }
 
-    void tick() {
+    void tick(const Milliseconds now) {
         if (off_timer.isExpired()) {
             const auto new_state = State{
-                .angle = config.angleWhenOff,
-                .pwm = angele_to_pwm(config.angleWhenOff),
+                    .angle = config.angleWhenOff,
+                    .pwm = angele_to_pwm(config.angleWhenOff),
             };
             if (state.angle != new_state.angle) {
-                Serial.println("[Servo." + String(config.name) + "] Off");
+                info(now, "[Servo." + String(config.name) + "] Off | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
             }
             state = new_state;
         } else if (on_timer.isExpired()) {
             const auto new_state = State{
-                .angle = config.angleWhenOn,
-                .pwm = angele_to_pwm(config.angleWhenOn),
+                    .angle = config.angleWhenOn,
+                    .pwm = angele_to_pwm(config.angleWhenOn),
             };
             if (state.angle != new_state.angle) {
-                Serial.println("[Servo." + String(config.name) + "] On");
+                info(now, "[Servo." + String(config.name) + "] On | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
             }
             state = new_state;
         }
@@ -196,10 +198,11 @@ typedef struct Sensor {
     }
 
     void dump() const {
-        Serial.println("[Sensor." + String(config.name) + "]");
-        Serial.println("  - Pin: " + String(config.pin));
-        Serial.println("  - Inverted: " + String(config.inverted));
-        Serial.println("  - Debounce: " + String(config.debounce) + "ms");
+        const auto now = millis();
+        info(now, "[Sensor." + String(config.name) + "]");
+        info(now, "  - Pin: " + String(config.pin));
+        info(now, "  - Inverted: " + String(config.inverted));
+        info(now, "  - Debounce: " + String(config.debounce) + "ms");
     }
 
     template<typename Func>
@@ -207,12 +210,12 @@ typedef struct Sensor {
         return debouncer.onPressedFor(config.debounce, func);
     }
 
-    void tick() {
+    void tick(const Milliseconds now) {
         debouncer.read();
         if (debouncer.wasPressed()) {
-            Serial.println("[Sensor." + String(config.name) + "] Rising Edge");
+            info(now, "[Sensor." + String(config.name) + "] Rising Edge");
         } else if (debouncer.wasReleased()) {
-            Serial.println("[Sensor." + String(config.name) + "] Falling Edge");
+            info(now, "[Sensor." + String(config.name) + "] Falling Edge");
         }
     }
 
@@ -227,12 +230,13 @@ typedef struct Inputs {
     }
 
     void dump() const {
-        Serial.println("[Inputs]");
+        const auto now = millis();
+        info(now, "[Inputs]");
         pressure.dump();
     }
 
-    void tick() {
-        pressure.tick();
+    void tick(const Milliseconds now) {
+        pressure.tick(now);
     }
 } Inputs;
 
@@ -248,16 +252,17 @@ typedef struct Outputs {
     }
 
     void dump() const {
-        Serial.println("[Outputs]");
-        dispenser.dump();
-        solenoid.dump();
-        lighter.dump();
+        const auto now = millis();
+        info(now, "[Outputs]");
+        dispenser.dump(now);
+        solenoid.dump(now);
+        lighter.dump(now);
     }
 
-    void tick() {
-        dispenser.tick();
-        solenoid.tick();
-        lighter.tick();
+    void tick(Milliseconds now) {
+        dispenser.tick(now);
+        solenoid.tick(now);
+        lighter.tick(now);
     }
 } Outputs;
 

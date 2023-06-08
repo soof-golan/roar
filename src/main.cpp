@@ -8,30 +8,33 @@ Config config;
 typedef void (*Func)();
 
 void on_pressure_sensor_trigger() {
-    config.outputs.dispenser.trigger();
-    config.outputs.solenoid.trigger();
-    config.outputs.lighter.trigger();
+    const auto now = millis();
+    config.outputs.dispenser.trigger(now);
+    config.outputs.solenoid.trigger(now);
+    config.outputs.lighter.trigger(now);
 }
 
 
 void setup() {
 // write your initialization code here
     Serial.begin(115200);
+    const auto now = millis();
     wdt_enable(WDTO_8S);  /* Enable the watchdog with a timeout of 2 seconds */
-    Serial.println("[ROAR] Starting...");
-    Serial.println("[ROAR] Configuring...");
+    info(now, "[ROAR] Starting...");
+    info(now, "[ROAR] Configuring...");
     config.inputs.setup();
     config.outputs.setup();
     config.inputs.dump();
     config.outputs.dump();
     config.inputs.pressure.subscribe_high(on_pressure_sensor_trigger);
-    Serial.println("[ROAR] Configured");
-    Serial.println("[ROAR] Started");
+    info(now, "[ROAR] Configured");
+    info(now, "[ROAR] Started");
 }
 
 void loop() {
 // write your code here
-    config.inputs.tick();
-    config.outputs.tick();
+    const auto now = millis();
+    config.inputs.tick(now);
+    config.outputs.tick(now);
     wdt_reset();
 }
