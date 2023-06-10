@@ -37,7 +37,7 @@
 #define LIGHTER_DELAY_MS 50
 #define LIGHTER_DURATION_MS 1000
 #define LIGHTER_ANGLE_WHEN_ON 135
-#define LIGHTER_ANGLE_WHEN_OFF 0
+#define LIGHTER_ANGLE_WHEN_OFF 15
 
 // System Configuration
 #define HEARTBEAT_INTERVAL_MS 5000
@@ -163,8 +163,10 @@ typedef struct ServoActivation {
 
     void setup() {
         servo.attach(config.pin);
-        state = {config.angleWhenOff, angele_to_pwm(config.angleWhenOff)};
-        update_state(config.angleWhenOff);
+        state = {
+          .angle=config.angleWhenOff, 
+          .pwm=angele_to_pwm(config.angleWhenOff)
+        };
         drive_outputs();
         on_timer.expire();
         off_timer.expire();
