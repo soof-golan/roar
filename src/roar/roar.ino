@@ -39,6 +39,9 @@
 #define LIGHTER_ANGLE_WHEN_ON 135
 #define LIGHTER_ANGLE_WHEN_OFF 15
 
+// Time between triggers
+#define TIME_BETWEEN_TRIGGERS_MS 15000
+
 // System Configuration
 #define HEARTBEAT_INTERVAL_MS 5000
 #define SERIAL_BAUD_RATE 115200
@@ -63,6 +66,7 @@ typedef struct Activation {
         Pin pin;
         Milliseconds delay;
         Milliseconds duration;
+        Milliseconds time_between_triggers;
         bool inverted;
         String name;
     } Config;
@@ -70,11 +74,13 @@ typedef struct Activation {
 
     AsyncDelay on_timer;
     AsyncDelay off_timer;
+    AsyncDelay trigger_gate_timer;
     int state;
 
     explicit Activation(const Config &config) : config(config), state(config.inverted ? HIGH : LOW) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+        trigger_gate_timer = AsyncDelay(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
     }
 
     void setup() {
@@ -82,6 +88,7 @@ typedef struct Activation {
         digitalWrite(config.pin, state);
         on_timer.expire();
         off_timer.expire();
+        trigger_gate_timer.expire();
     }
 
     void dump() const {
@@ -90,13 +97,15 @@ typedef struct Activation {
         info("  - Inverted: " + String(config.inverted));
         info("  - Delay: " + String(config.delay) + "ms");
         info("  - Duration: " + String(config.duration) + "ms");
+        info("  - Time between triggers: " + String(config.time_between_triggers) + "ms");
     }
 
     void trigger() {
-        if (on_timer.isExpired() && off_timer.isExpired()) {
+        if (on_timer.isExpired() && off_timer.isExpired() && trigger_gate_timer.isExpired()) {
             info("[Output." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
             off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+            trigger_gate_timer.start(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
         }
     }
 
@@ -125,6 +134,7 @@ typedef struct ServoActivation {
         Pin pin;
         Milliseconds delay;
         Milliseconds duration;
+        Milliseconds time_between_triggers;
         Degrees angleWhenOn;
         Degrees angleWhenOff;
         String name;
@@ -142,10 +152,12 @@ typedef struct ServoActivation {
 
     AsyncDelay on_timer;
     AsyncDelay off_timer;
+    AsyncDelay trigger_gate_timer;
 
     explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff, angele_to_pwm(config.angleWhenOff)}) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+        trigger_gate_timer = AsyncDelay(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
     }
 
     static int angele_to_pwm(Degrees angle) {
@@ -164,12 +176,13 @@ typedef struct ServoActivation {
     void setup() {
         servo.attach(config.pin);
         state = {
-          .angle=config.angleWhenOff, 
-          .pwm=angele_to_pwm(config.angleWhenOff)
+                .angle=config.angleWhenOff,
+                .pwm=angele_to_pwm(config.angleWhenOff)
         };
         drive_outputs();
         on_timer.expire();
         off_timer.expire();
+        trigger_gate_timer.expire();
     }
 
     void dump() const {
@@ -179,13 +192,15 @@ typedef struct ServoActivation {
         info("  - Duration: " + String(config.duration) + "ms");
         info("  - Angle When On: " + String(config.angleWhenOn) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOn)) + ")");
         info("  - Angle When Off: " + String(config.angleWhenOff) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOff)) + ")");
+        info("  - Time between triggers: " + String(config.time_between_triggers) + "ms");
     }
 
     void trigger() {
-        if (on_timer.isExpired() && off_timer.isExpired()) {
+        if (on_timer.isExpired() && off_timer.isExpired() && trigger_gate_timer.isExpired()) {
             info("[ServoActivation." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
             off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+            trigger_gate_timer.start(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
         }
     }
 
@@ -310,29 +325,35 @@ typedef struct Outputs {
     }
 } Outputs;
 
-typedef struct Heartbeat{
-    struct Config{
+typedef struct Heartbeat {
+    struct Config {
         Milliseconds interval;
     } config;
     AsyncDelay timer;
 
-    void setup(){
+    void setup() {
         timer.expire();
     }
 
-    void dump(){
+    void dump() {
         info("[Heartbeat]");
         info("  - Interval: " + String(config.interval) + "ms");
     }
 
-    void tick(){
-        if(timer.isExpired()){
+    void tick() {
+        if (timer.isExpired()) {
             info("[Heartbeat] 💜");
             timer.start(config.interval, AsyncDelay::units_t::MILLIS);
         }
     }
 
 } Heartbeat;
+
+TriggerGate trigger_gate = TriggerGate(
+        TriggerGate:: Config{
+                .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
+        }
+);
 
 // Global config object - this is the only place where you should be updating the config
 typedef struct Config {
@@ -353,6 +374,7 @@ typedef struct Config {
                             .pin = DISPENSER_PIN,
                             .delay = DISPENSER_DELAY_MS,
                             .duration = DISPENSER_DURATION_MS,
+                            .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
                             .inverted = DISPENSER_INVERTED,
                             .name = "Dispenser"
                     }
@@ -362,6 +384,7 @@ typedef struct Config {
                             .pin = PIN_SOLENOID,
                             .delay = SOLENOID_DELAY_MS,
                             .duration = SOLENOID_DURATION_MS,
+                            .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
                             .inverted = SOLENOID_INVERTED,
                             .name = "Solenoid"
                     }
@@ -372,6 +395,7 @@ typedef struct Config {
                             .pin = LIGHTER_SERVO_PIN,
                             .delay = LIGHTER_DELAY_MS,
                             .duration = LIGHTER_DURATION_MS,
+                            .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
                             .angleWhenOn = LIGHTER_ANGLE_WHEN_ON,
                             .angleWhenOff = LIGHTER_ANGLE_WHEN_OFF,
                             .name = "Lighter"
@@ -398,7 +422,7 @@ void setup() {
     Serial.begin(SERIAL_BAUD_RATE);
     info("[ROAR] Booting...");
     info("[ROAR.Watchdog][8s timeout]");
-    wdt_enable(WDTO_8S);  /* Enable the watchdog with a timeout of 2 seconds */
+    wdt_enable(WDTO_8S);  /* Enable the watchdog with a timeout of 8 seconds */
     info("[ROAR] Starting...");
     info("[ROAR] Configuring...");
     config.inputs.setup();
