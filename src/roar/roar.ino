@@ -210,21 +210,23 @@ typedef struct ServoActivation {
                     .angle = config.angleWhenOff,
                     .pwm = angele_to_pwm(config.angleWhenOff),
             };
-            if (state.angle != new_state.angle) {
+            const auto should_drive = state.angle != new_state.angle;
+            state = new_state;
+            if (should_drive) {
                 info("[ServoActivation." + String(config.name) + "] Off | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
                 drive_outputs();
             }
-            state = new_state;
         } else if (on_timer.isExpired()) {
             const auto new_state = State{
                     .angle = config.angleWhenOn,
                     .pwm = angele_to_pwm(config.angleWhenOn),
             };
-            if (state.angle != new_state.angle) {
+            const auto should_drive = state.angle != new_state.angle;
+            state = new_state;
+            if (should_drive) {
                 info("[ServoActivation." + String(config.name) + "] On | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
                 drive_outputs();
             }
-            state = new_state;
         }
     }
 
