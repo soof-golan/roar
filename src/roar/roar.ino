@@ -143,7 +143,6 @@ typedef struct ServoActivation {
     // Represents the current state of the servo
     typedef struct State {
         Degrees angle;
-        int pwm;
     } State;
 
     const Config config;
@@ -154,30 +153,20 @@ typedef struct ServoActivation {
     AsyncDelay off_timer;
     AsyncDelay trigger_gate_timer;
 
-    explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff, angele_to_pwm(config.angleWhenOff)}) {
+    explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff}) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
         off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
         trigger_gate_timer = AsyncDelay(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
     }
 
-    static int angele_to_pwm(Degrees angle) {
-        return (int) map(angle, 0, 180, 0, 255);
-    }
-
-    static Degrees pwm_to_angle(int pwm) {
-        return (Degrees) map(pwm, 0, 255, 0, 180);
-    }
-
     void update_state(Degrees angle) {
         state.angle = angle;
-        state.pwm = angele_to_pwm(angle);
     }
 
     void setup() {
         servo.attach(config.pin);
         state = {
                 .angle=config.angleWhenOff,
-                .pwm=angele_to_pwm(config.angleWhenOff)
         };
         drive_outputs();
         on_timer.expire();
@@ -190,8 +179,8 @@ typedef struct ServoActivation {
         info("  - Pin: " + String(config.pin));
         info("  - Delay: " + String(config.delay) + "ms");
         info("  - Duration: " + String(config.duration) + "ms");
-        info("  - Angle When On: " + String(config.angleWhenOn) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOn)) + ")");
-        info("  - Angle When Off: " + String(config.angleWhenOff) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOff)) + ")");
+        info("  - Angle When On: " + String(config.angleWhenOn) + "°");
+        info("  - Angle When Off: " + String(config.angleWhenOff) + "°");
         info("  - Time between triggers: " + String(config.time_between_triggers) + "ms");
     }
 
@@ -208,7 +197,6 @@ typedef struct ServoActivation {
         if (off_timer.isExpired()) {
             const auto new_state = State{
                     .angle = config.angleWhenOff,
-                    .pwm = angele_to_pwm(config.angleWhenOff),
             };
             const auto should_drive = state.angle != new_state.angle;
             state = new_state;
@@ -219,7 +207,6 @@ typedef struct ServoActivation {
         } else if (on_timer.isExpired()) {
             const auto new_state = State{
                     .angle = config.angleWhenOn,
-                    .pwm = angele_to_pwm(config.angleWhenOn),
             };
             const auto should_drive = state.angle != new_state.angle;
             state = new_state;
