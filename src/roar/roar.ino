@@ -349,11 +349,6 @@ typedef struct Heartbeat {
 
 } Heartbeat;
 
-TriggerGate trigger_gate = TriggerGate(
-        TriggerGate:: Config{
-                .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
-        }
-);
 
 // Global config object - this is the only place where you should be updating the config
 typedef struct Config {
