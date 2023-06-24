@@ -35,7 +35,9 @@
 
 #define LIGHTER_SERVO_PIN 3
 #define LIGHTER_DELAY_MS 50
-#define LIGHTER_DURATION_MS 1000
+#define LIGHTER_ARM_DURATION_MS 300
+#define LIGHTER_ON_DURATION_MS 1000
+#define LIGHTER_ANGLE_WHEN_ARMED 90
 #define LIGHTER_ANGLE_WHEN_ON 135
 #define LIGHTER_ANGLE_WHEN_OFF 15
 
@@ -130,11 +132,14 @@ typedef struct Activation {
 } Activation;
 
 typedef struct ServoActivation {
+    // TODO: Maybe just support an array of angles and delays
     typedef struct Config {
         Pin pin;
         Milliseconds delay;
-        Milliseconds duration;
+        Milliseconds arm_duration;
+        Milliseconds on_duration;
         Milliseconds time_between_triggers;
+        Degrees angleWhenArmed;
         Degrees angleWhenOn;
         Degrees angleWhenOff;
         String name;
@@ -150,12 +155,14 @@ typedef struct ServoActivation {
     Servo servo;
 
     AsyncDelay on_timer;
+    AsyncDelay arm_timer;
     AsyncDelay off_timer;
     AsyncDelay trigger_gate_timer;
 
     explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff}) {
-        on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
-        off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+        arm_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
+        on_timer = AsyncDelay(config.delay + config.arm_duration, AsyncDelay::units_t::MILLIS);
+        off_timer = AsyncDelay(config.delay + config.arm_duration + config.on_duration, AsyncDelay::units_t::MILLIS);
         trigger_gate_timer = AsyncDelay(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
     }
 
@@ -169,6 +176,7 @@ typedef struct ServoActivation {
                 .angle=config.angleWhenOff,
         };
         drive_outputs();
+        arm_timer.expire();
         on_timer.expire();
         off_timer.expire();
         trigger_gate_timer.expire();
@@ -178,7 +186,8 @@ typedef struct ServoActivation {
         info("[Servo." + String(config.name) + "]");
         info("  - Pin: " + String(config.pin));
         info("  - Delay: " + String(config.delay) + "ms");
-        info("  - Duration: " + String(config.duration) + "ms");
+        info("  - Duration: " + String(config.on_duration) + "ms");
+        info("  - Angle When Armed: " + String(config.angleWhenArmed) + "°");
         info("  - Angle When On: " + String(config.angleWhenOn) + "°");
         info("  - Angle When Off: " + String(config.angleWhenOff) + "°");
         info("  - Time between triggers: " + String(config.time_between_triggers) + "ms");
@@ -187,8 +196,9 @@ typedef struct ServoActivation {
     void trigger() {
         if (on_timer.isExpired() && off_timer.isExpired() && trigger_gate_timer.isExpired()) {
             info("[ServoActivation." + String(config.name) + "] Triggered");
-            on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
-            off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+            arm_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
+            on_timer.start(config.delay + config.arm_duration, AsyncDelay::units_t::MILLIS);
+            off_timer.start(config.delay + config.arm_duration + config.on_duration, AsyncDelay::units_t::MILLIS);
             trigger_gate_timer.start(config.time_between_triggers, AsyncDelay::units_t::MILLIS);
         }
     }
@@ -212,6 +222,16 @@ typedef struct ServoActivation {
             state = new_state;
             if (should_drive) {
                 info("[ServoActivation." + String(config.name) + "] On | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
+                drive_outputs();
+            }
+        } else if (arm_timer.isExpired()) {
+            const auto new_state = State{
+                    .angle = config.angleWhenArmed,
+            };
+            const auto should_drive = state.angle != new_state.angle;
+            state = new_state;
+            if (should_drive) {
+                info("[ServoActivation." + String(config.name) + "] Armed | " + String(state.angle) + "° -> " + String(new_state.angle) + "°");
                 drive_outputs();
             }
         }
@@ -378,8 +398,10 @@ typedef struct Config {
                     ServoActivation::Config{
                             .pin = LIGHTER_SERVO_PIN,
                             .delay = LIGHTER_DELAY_MS,
-                            .duration = LIGHTER_DURATION_MS,
+                            .arm_duration = LIGHTER_ARM_DURATION_MS,
+                            .on_duration = LIGHTER_ON_DURATION_MS,
                             .time_between_triggers = TIME_BETWEEN_TRIGGERS_MS,
+                            .angleWhenArmed = LIGHTER_ANGLE_WHEN_ARMED,
                             .angleWhenOn = LIGHTER_ANGLE_WHEN_ON,
                             .angleWhenOff = LIGHTER_ANGLE_WHEN_OFF,
                             .name = "Lighter"
