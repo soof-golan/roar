@@ -45,7 +45,7 @@ typedef struct Config {
                     ServoActivation::Config{
                             .pin = 3,
                             .delay = 50,
-                            .duration = 1000,
+                            .on_duration = 1000,
                             .angleWhenOn = 135,
                             .angleWhenOff = 0,
                             .name = "Lighter"

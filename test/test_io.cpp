@@ -148,7 +148,7 @@ void test_servo_timing() {
     ASSERT_WITH_CLOCK(!servo.off_timer.isExpired(), "Off timer should not expire");
     ASSERT_EQ_WITH_CLOCK(servo.state.angle, servo.config.angleWhenOn, "Angle should be at angleWhenOn");
     ASSERT_EQ_WITH_CLOCK(servo.state.pwm, Servo::angele_to_pwm(servo.config.angleWhenOn), "PWM should be at angleWhenOn");
-    delay(servo.config.duration - 100);
+    delay(servo.config.on_duration - 100);
     servo.tick();
     ASSERT_WITH_CLOCK(servo.on_timer.isExpired(), "On timer should stay expired");
     ASSERT_WITH_CLOCK(!servo.off_timer.isExpired(), "Off timer should not expire");

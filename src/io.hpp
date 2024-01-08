@@ -82,7 +82,7 @@ typedef struct ServoActivation {
     typedef struct Config {
         Pin pin;
         Milliseconds delay;
-        Milliseconds duration;
+        Milliseconds on_duration;
         Degrees angleWhenOn;
         Degrees angleWhenOff;
         String name;
@@ -103,7 +103,7 @@ typedef struct ServoActivation {
 
     explicit ServoActivation(const Config &config) : config(config), state({config.angleWhenOff, angele_to_pwm(config.angleWhenOff)}) {
         on_timer = AsyncDelay(config.delay, AsyncDelay::units_t::MILLIS);
-        off_timer = AsyncDelay(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+        off_timer = AsyncDelay(config.delay + config.on_duration, AsyncDelay::units_t::MILLIS);
     }
 
     static int angele_to_pwm(Degrees angle) {
@@ -132,7 +132,7 @@ typedef struct ServoActivation {
         info(now, "[Servo." + String(config.name) + "]");
         info(now, "  - Pin: " + String(config.pin));
         info(now, "  - Delay: " + String(config.delay) + "ms");
-        info(now, "  - Duration: " + String(config.duration) + "ms");
+        info(now, "  - Duration: " + String(config.on_duration) + "ms");
         info(now, "  - Angle When On: " + String(config.angleWhenOn) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOn)) + ")");
         info(now, "  - Angle When Off: " + String(config.angleWhenOff) + "° (PWM: " + String(angele_to_pwm(config.angleWhenOff)) + ")");
     }
@@ -141,7 +141,7 @@ typedef struct ServoActivation {
         if (on_timer.isExpired()) {
             info(now, "[ServoActivation." + String(config.name) + "] Triggered");
             on_timer.start(config.delay, AsyncDelay::units_t::MILLIS);
-            off_timer.start(config.delay + config.duration, AsyncDelay::units_t::MILLIS);
+            off_timer.start(config.delay + config.on_duration, AsyncDelay::units_t::MILLIS);
         }
     }
 
